@@ -6,11 +6,11 @@ import time
 from .input_event import EventLog
 from .input_policy import UtgBasedInputPolicy, UtgNaiveSearchPolicy, UtgGreedySearchPolicy, \
                          UtgReplayPolicy, \
-                         ManualPolicy, \
+                         ManualPolicy, TaskPolicy, \
                          POLICY_NAIVE_DFS, POLICY_GREEDY_DFS, \
                          POLICY_NAIVE_BFS, POLICY_GREEDY_BFS, \
                          POLICY_REPLAY, POLICY_MEMORY_GUIDED, \
-                         POLICY_MANUAL, POLICY_MONKEY, POLICY_NONE
+                         POLICY_MANUAL, POLICY_MONKEY, POLICY_NONE, POLICY_TASK
 
 DEFAULT_POLICY = POLICY_GREEDY_DFS
 DEFAULT_EVENT_INTERVAL = 1
@@ -27,7 +27,7 @@ class InputManager(object):
     This class manages all events to send during app running
     """
 
-    def __init__(self, device, app, policy_name, random_input,
+    def __init__(self, device, app, task, policy_name, random_input,
                  event_count, event_interval,
                  script_path=None, profiling_method=None, master=None,
                  replay_output=None):
@@ -43,6 +43,7 @@ class InputManager(object):
 
         self.device = device
         self.app = app
+        self.task = task
         self.policy_name = policy_name
         self.random_input = random_input
         self.events = []
@@ -79,6 +80,8 @@ class InputManager(object):
             input_policy = UtgReplayPolicy(device, app, self.replay_output)
         elif self.policy_name == POLICY_MANUAL:
             input_policy = ManualPolicy(device, app)
+        elif self.policy_name == POLICY_TASK:
+            input_policy = TaskPolicy(device, app, self.random_input, task=self.task)
         else:
             self.logger.warning("No valid input policy specified. Using policy \"none\".")
             input_policy = None

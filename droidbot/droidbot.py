@@ -25,6 +25,7 @@ class DroidBot(object):
     def __init__(self,
                  app_path=None,
                  device_serial=None,
+                 task=None,
                  is_emulator=False,
                  output_dir=None,
                  env_policy=None,
@@ -73,6 +74,7 @@ class DroidBot(object):
 
         self.device = None
         self.app = None
+        self.task = task
         self.droidbox = None
         self.env_manager = None
         self.input_manager = None
@@ -102,6 +104,7 @@ class DroidBot(object):
             self.input_manager = InputManager(
                 device=self.device,
                 app=self.app,
+                task=self.task,
                 policy_name=policy_name,
                 random_input=random_input,
                 event_count=event_count,
@@ -188,11 +191,6 @@ class DroidBot(object):
             self.device.tear_down()
         if not self.keep_app:
             self.device.uninstall_app(self.app)
-        if hasattr(self.input_manager.policy, "master") and \
-           self.input_manager.policy.master:
-            import xmlrpc.client
-            proxy = xmlrpc.client.ServerProxy(self.input_manager.policy.master)
-            proxy.stop_worker(self.device.serial)
 
 
 class DroidBotException(Exception):

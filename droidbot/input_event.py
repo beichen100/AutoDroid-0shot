@@ -152,6 +152,10 @@ class InputEvent(object):
     def get_event_str(self, state):
         pass
 
+    @abstractmethod
+    def get_prompt(self):
+        return self.event_type
+
     def get_views(self):
         return []
 
@@ -397,14 +401,18 @@ class KeyEvent(InputEvent):
 
     def get_event_str(self, state):
         return "%s(state=%s, name=%s)" % (self.__class__.__name__, state.state_str, self.name)
+    
+    def get_prompt(self):
+        return f'{self.event_type} {self.name}'
 
 
 class UIEvent(InputEvent):
     """
     This class describes a UI event of app, such as touch, click, etc
     """
-    def __init__(self):
+    def __init__(self, view=None):
         super().__init__()
+        self.view = view
 
     def send(self, device):
         raise NotImplementedError
@@ -443,6 +451,12 @@ class UIEvent(InputEvent):
         view_text = view_text[:10] if len(view_text) > 10 else view_text
         view_short_sig = f'{state.activity_short_name}/{view_class}-{view_text}'
         return f"state={state.state_str}, view={view['view_str']}({view_short_sig})"
+    
+    def get_prompt(self):
+        view = self.view
+        view_text = view['text'].replace('\n', '\\n') if 'text' in view and view['text'] else ''
+        view_text = view_text[:10] if len(view_text) > 10 else view_text
+        return f'{self.event_type} {view_text}'
 
 
 class TouchEvent(UIEvent):
@@ -451,7 +465,7 @@ class TouchEvent(UIEvent):
     """
 
     def __init__(self, x=None, y=None, view=None, event_dict=None):
-        super().__init__()
+        super().__init__(view)
         self.event_type = KEY_TouchEvent
         self.x = x
         self.y = y
@@ -489,7 +503,7 @@ class LongTouchEvent(UIEvent):
     """
 
     def __init__(self, x=None, y=None, view=None, duration=2000, event_dict=None):
-        super().__init__()
+        super().__init__(view)
         self.event_type = KEY_LongTouchEvent
         self.x = x
         self.y = y
@@ -530,7 +544,7 @@ class SwipeEvent(UIEvent):
 
     def __init__(self, start_x=None, start_y=None, start_view=None, end_x=None, end_y=None, end_view=None,
                  duration=1000, event_dict=None):
-        super().__init__()
+        super().__init__(start_view)
         self.event_type = KEY_SwipeEvent
 
         self.start_x = start_x
@@ -595,7 +609,7 @@ class ScrollEvent(UIEvent):
     """
 
     def __init__(self, x=None, y=None, view=None, direction="DOWN", event_dict=None):
-        super().__init__()
+        super().__init__(view)
         self.event_type = KEY_ScrollEvent
         self.x = x
         self.y = y
@@ -660,6 +674,9 @@ class ScrollEvent(UIEvent):
 
     def get_views(self):
         return [self.view] if self.view else []
+    
+    def get_prompt(self):
+        return f'{self.event_type} {self.direction}'
 
 
 class SetTextEvent(UIEvent):
@@ -672,7 +689,7 @@ class SetTextEvent(UIEvent):
         pass
 
     def __init__(self, x=None, y=None, view=None, text=None, event_dict=None):
-        super().__init__()
+        super().__init__(view)
         self.event_type = KEY_SetTextEvent
         self.x = x
         self.y = y
