@@ -1,10 +1,11 @@
 import sys
 import json
+import re
 import logging
 import random
 from abc import abstractmethod
 
-from .input_event import InputEvent, KeyEvent, IntentEvent, TouchEvent, ManualEvent, SetTextEvent, KillAppEvent
+from .input_event import *
 from .utg import UTG
 
 # Max number of restarts
@@ -654,6 +655,7 @@ class TaskPolicy(UtgBasedInputPolicy):
         self.__event_trace = ""
         self.__missed_states = set()
         self.__random_explore = random_input
+        self.__action_history = []
 
     def generate_event_based_on_utg(self):
         """
@@ -695,6 +697,7 @@ class TaskPolicy(UtgBasedInputPolicy):
                     # Start the app
                     self.__event_trace += EVENT_FLAG_START_APP
                     self.logger.info("Trying to start the app...")
+                    self.__action_history = [f'- start the app {self.app.app_name}']
                     return IntentEvent(intent=start_app_intent)
 
         elif current_state.get_app_activity_depth(self.app) > 0:
@@ -710,44 +713,67 @@ class TaskPolicy(UtgBasedInputPolicy):
                     go_back_event = KeyEvent(name="BACK")
                 self.__event_trace += EVENT_FLAG_NAVIGATE
                 self.logger.info("Going back to the app...")
+                self.__action_history.append('- go back')
                 return go_back_event
         else:
             # If the app is in foreground
             self.__num_steps_outside = 0
 
-        # Get all possible input events
-        possible_actions = current_state.get_possible_input()
-        possible_actions.append(KeyEvent(name="BACK"))
-
-        action = self._get_action_with_LLM(possible_actions)
+        action, candidate_actions = self._get_action_with_LLM(current_state, self.__action_history)
         if action is not None:
+            self.__action_history.append(current_state.get_action_desc(action))
             return action
 
         if self.__random_explore:
             self.logger.info("Trying random event.")
-            random.shuffle(possible_actions)
-            return possible_actions[0]
+            action = random.choice(candidate_actions)
+            self.__action_history.append(current_state.get_action_desc(action))
+            return action
 
         # If couldn't find a exploration target, stop the app
         stop_app_intent = self.app.get_stop_intent()
         self.logger.info("Cannot find an exploration target. Trying to restart app...")
+        self.__action_history.append('- stop the app')
         self.__event_trace += EVENT_FLAG_STOP_APP
         return IntentEvent(intent=stop_app_intent)
-
-    def _get_action_with_LLM(self, possible_actions):
-        prompt = f'{self.task}. There are following candidate actions in the app:'
-        for i,a in enumerate(possible_actions):
-            prompt += f'\n{i}- {a.get_prompt()}'
-        prompt += '\nwhich action should I choose?'
-        print(prompt)
-        response = self._query_llm(prompt)
-        try:
-            idx = int(response[0])
-            return possible_actions[idx]
-        except:
-            return None
         
     def _query_llm(self, prompt):
-        # TODO implement this
-        return "I do not know..."
+        import requests
+        URL = os.environ['GPT_URL']  # NOTE: replace with your own GPT API
+        body = {"model":"gpt-3.5-turbo","messages":[{"role":"user","content":prompt}],"stream":True}
+        headers = {'Content-Type': 'application/json', 'path': 'v1/chat/completions'}
+        r = requests.post(url=URL, json=body, headers=headers)
+        return r.content.decode()
+
+    def _get_action_with_LLM(self, current_state, action_history):
+        task_prompt = f"I'm using a smartphone to {self.task}."
+        history_prompt = f'I have already completed the following steps, which should not be performed again: \n ' + ';\n '.join(action_history)
+        state_prompt, candidate_actions = current_state.get_described_actions()
+        question = 'Which action should I choose next? Just return the action id and nothing else.\nIf no more action is needed, return -1.'
+        prompt = f'{task_prompt}\n{state_prompt}\n{history_prompt}\n{question}'
+        print(prompt)
+        response = self._query_llm(prompt)
+        print(f'response: {response}')
+        if '-1' in response:
+            input(f"Seems the task is completed. Press Enter to continue...")
+        match = re.search(r'\d+', response)
+        if not match:
+            return None, candidate_actions
+        idx = int(match.group(0))
+        selected_action = candidate_actions[idx]
+        if isinstance(selected_action, SetTextEvent):
+            view_text = current_state.get_view_desc(selected_action.view)
+            question = f'What text should I enter to the {view_text}? Just return the text and nothing else.'
+            prompt = f'{task_prompt}\n{state_prompt}\n{question}'
+            print(prompt)
+            response = self._query_llm(prompt)
+            print(f'response: {response}')
+            selected_action.text = response.replace('"', '').replace(' ', '-')
+            if len(selected_action.text) > 30:  # heuristically disable long text input
+                selected_action.text = ''
+        return selected_action, candidate_actions
+        # except:
+        #     import traceback
+        #     traceback.print_exc()
+        #     return None, candidate_actions
 

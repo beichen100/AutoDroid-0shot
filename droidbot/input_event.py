@@ -72,8 +72,8 @@ POSSIBLE_BROADCASTS = [
 KEY_KeyEvent = "key"
 KEY_ManualEvent = "manual"
 KEY_ExitEvent = "exit"
-KEY_TouchEvent = "touch"
-KEY_LongTouchEvent = "long_touch"
+KEY_TouchEvent = "click"
+KEY_LongTouchEvent = "long_click"
 KEY_SwipeEvent = "swipe"
 KEY_ScrollEvent = "scroll"
 KEY_SetTextEvent = "set_text"
@@ -93,6 +93,7 @@ class InputEvent(object):
     def __init__(self):
         self.event_type = None
         self.log_lines = None
+        self.prompt = self.event_type
 
     def to_dict(self):
         return self.__dict__
@@ -151,10 +152,6 @@ class InputEvent(object):
     @abstractmethod
     def get_event_str(self, state):
         pass
-
-    @abstractmethod
-    def get_prompt(self):
-        return self.event_type
 
     def get_views(self):
         return []
@@ -401,9 +398,6 @@ class KeyEvent(InputEvent):
 
     def get_event_str(self, state):
         return "%s(state=%s, name=%s)" % (self.__class__.__name__, state.state_str, self.name)
-    
-    def get_prompt(self):
-        return f'{self.event_type} {self.name}'
 
 
 class UIEvent(InputEvent):
@@ -451,12 +445,6 @@ class UIEvent(InputEvent):
         view_text = view_text[:10] if len(view_text) > 10 else view_text
         view_short_sig = f'{state.activity_short_name}/{view_class}-{view_text}'
         return f"state={state.state_str}, view={view['view_str']}({view_short_sig})"
-    
-    def get_prompt(self):
-        view = self.view
-        view_text = view['text'].replace('\n', '\\n') if 'text' in view and view['text'] else ''
-        view_text = view_text[:10] if len(view_text) > 10 else view_text
-        return f'{self.event_type} {view_text}'
 
 
 class TouchEvent(UIEvent):
@@ -674,9 +662,6 @@ class ScrollEvent(UIEvent):
 
     def get_views(self):
         return [self.view] if self.view else []
-    
-    def get_prompt(self):
-        return f'{self.event_type} {self.direction}'
 
 
 class SetTextEvent(UIEvent):
@@ -694,6 +679,8 @@ class SetTextEvent(UIEvent):
         self.x = x
         self.y = y
         self.view = view
+        # if text is not None:
+        #     text = text.replace('"', '')
         self.text = text
         if event_dict is not None:
             self.__dict__.update(event_dict)

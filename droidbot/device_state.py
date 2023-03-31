@@ -3,7 +3,7 @@ import math
 import os
 
 from .utils import md5
-from .input_event import TouchEvent, LongTouchEvent, ScrollEvent, SetTextEvent, KeyEvent
+from .input_event import TouchEvent, LongTouchEvent, ScrollEvent, SetTextEvent, KeyEvent, UIEvent
 
 
 class DeviceState(object):
@@ -448,16 +448,125 @@ class DeviceState(object):
                 # TODO figure out what event can be sent to editable views
                 pass
 
-        for view_id in enabled_view_ids:
-            if view_id in touch_exclude_view_ids:
-                continue
-            children = self.__safe_dict_get(self.views[view_id], 'children')
-            if children and len(children) > 0:
-                continue
-            possible_events.append(TouchEvent(view=self.views[view_id]))
+        # for view_id in enabled_view_ids:
+        #     if view_id in touch_exclude_view_ids:
+        #         continue
+        #     children = self.__safe_dict_get(self.views[view_id], 'children')
+        #     if children and len(children) > 0:
+        #         continue
+        #     possible_events.append(TouchEvent(view=self.views[view_id]))
 
         # For old Android navigation bars
         # possible_events.append(KeyEvent(name="MENU"))
 
         self.possible_events = possible_events
         return [] + possible_events
+    
+    def _get_self_ancestors_property(self, view, key, default=None):
+        all_views = [view] + [self.views[i] for i in self.get_all_ancestors(view)]
+        for v in all_views:
+            value = self.__safe_dict_get(v, key)
+            if value:
+                return value
+        return default
+    
+    def get_described_actions(self):
+        """
+        Get a text description of current state
+        """
+        enabled_view_ids = []
+        for view_dict in self.views:
+            # exclude navigation bar if exists
+            if self.__safe_dict_get(view_dict, 'visible') and \
+                self.__safe_dict_get(view_dict, 'resource_id') not in \
+               ['android:id/navigationBarBackground',
+                'android:id/statusBarBackground']:
+                enabled_view_ids.append(view_dict['temp_id'])
+
+        view_descs = []
+        available_actions = []
+        for view_id in enabled_view_ids:
+            view = self.views[view_id]
+            clickable = self._get_self_ancestors_property(view, 'clickable')
+            scrollable = self.__safe_dict_get(view, 'scrollable')
+            checkable = self._get_self_ancestors_property(view, 'checkable')
+            long_clickable = self._get_self_ancestors_property(view, 'long_clickable')
+            editable = self._get_self_ancestors_property(view, 'editable')
+            actionable = clickable or scrollable or checkable or long_clickable or editable
+            checked = self._get_self_ancestors_property(view, 'checked')
+            selected = self._get_self_ancestors_property(view, 'selected')
+            content_description = self._get_self_ancestors_property(view, 'content_description', default='')
+            view_text = self._get_self_ancestors_property(view, 'text', default='')
+            if not content_description and not view_text and not scrollable:  # actionable?
+                continue
+            
+            view_status = ''
+            if editable:
+                view_status += 'editable '
+            if checked or selected:
+                view_status += 'checked '
+            view_desc = f'- a {view_status}view'
+            if content_description:
+                view_desc += f' "{content_description}"'
+            if view_text:
+                view_text = view_text.replace('\n', '  ')
+                view_text = f'{view_text[:20]}...' if len(view_text) > 20 else view_text
+                view_desc += f' with text "{view_text}"'
+            if actionable:
+                view_actions = []
+                if editable:
+                    view_actions.append(f'edit ({len(available_actions)})')
+                    available_actions.append(SetTextEvent(view=view, text='HelloWorld'))
+                if clickable or checkable:
+                    view_actions.append(f'click ({len(available_actions)})')
+                    available_actions.append(TouchEvent(view=view))
+                # if checkable:
+                #     view_actions.append(f'check/uncheck ({len(available_actions)})')
+                #     available_actions.append(TouchEvent(view=view))
+                # if long_clickable:
+                #     view_actions.append(f'long click ({len(available_actions)})')
+                #     available_actions.append(LongTouchEvent(view=view))
+                if scrollable:
+                    view_actions.append(f'scroll up ({len(available_actions)})')
+                    available_actions.append(ScrollEvent(view=view, direction='UP'))
+                    view_actions.append(f'scroll down ({len(available_actions)})')
+                    available_actions.append(ScrollEvent(view=view, direction='DOWN'))
+                view_actions_str = ', '.join(view_actions)
+                view_desc += f' that can {view_actions_str}'
+            view_descs.append(view_desc)
+        view_descs.append(f'- a key to go back ({len(available_actions)})')
+        available_actions.append(KeyEvent(name='BACK'))
+        state_desc = 'The current state has the following UI views and corresponding actions, with action id in parentheses:\n '
+        state_desc += ';\n '.join(view_descs)
+        return state_desc, available_actions
+    
+    def get_view_desc(self, view):
+        content_description = self._get_self_ancestors_property(view, 'content_description', default='')
+        view_text = self._get_self_ancestors_property(view, 'text', default='')
+        scrollable = self.__safe_dict_get(view, 'scrollable')
+        view_desc = f'view'
+        if scrollable:
+            view_desc = f'scrollable view'
+        if content_description:
+            view_desc += f' "{content_description}"'
+        if view_text:
+            view_text = view_text.replace('\n', '  ')
+            view_text = f'{view_text[:20]}...' if len(view_text) > 20 else view_text
+            view_desc += f' with text "{view_text}"'
+        return view_desc
+    
+    def get_action_desc(self, action):
+        desc = action.event_type
+        if isinstance(action, KeyEvent):
+            desc = f'- go {action.name.lower()}'
+        if isinstance(action, UIEvent):
+            action_name = action.event_type
+            if isinstance(action, LongTouchEvent):
+                action_name = 'long click'
+            elif isinstance(action, SetTextEvent):
+                action_name = f'enter "{action.text}" into'
+            elif isinstance(action, ScrollEvent):
+                action_name = f'scroll {action.direction.lower()}'
+            desc = f'- {action_name} {self.get_view_desc(action.view)}'
+        return desc
+
