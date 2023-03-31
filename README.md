@@ -32,9 +32,9 @@ If successfully installed, you should be able to execute `droidbot -h`.
 
 ## How to use
 
-1. Make sure you have:
+1. Prepare:
 
-    + `.apk` file path of the app you want to analyze.
+    + An app to use. Download the `.apk` file to your host machine.
     + A device or an emulator connected to your host machine via `adb`.
 
 2. Start DroidBot:
@@ -49,7 +49,7 @@ If successfully installed, you should be able to execute `droidbot -h`.
     - Send a message to OpenAI to open their AI.
     - ...
 
-Note that DroidBot-GPT is for research purpose only. It may perform unintended actions. Please use at your own risk.
+Note that DroidBot-GPT is currently for research purpose only. It may perform unintended actions. Please use at your own risk.
 
 Enjoy!
 
