@@ -491,12 +491,12 @@ class DeviceState(object):
             scrollable = self.__safe_dict_get(view, 'scrollable')
             checkable = self._get_self_ancestors_property(view, 'checkable')
             long_clickable = self._get_self_ancestors_property(view, 'long_clickable')
-            editable = self._get_self_ancestors_property(view, 'editable')
+            editable = self.__safe_dict_get(view, 'editable')
             actionable = clickable or scrollable or checkable or long_clickable or editable
-            checked = self._get_self_ancestors_property(view, 'checked')
-            selected = self._get_self_ancestors_property(view, 'selected')
-            content_description = self._get_self_ancestors_property(view, 'content_description', default='')
-            view_text = self._get_self_ancestors_property(view, 'text', default='')
+            checked = self.__safe_dict_get(view, 'checked')
+            selected = self.__safe_dict_get(view, 'selected')
+            content_description = self.__safe_dict_get(view, 'content_description', default='')
+            view_text = self.__safe_dict_get(view, 'text', default='')
             if not content_description and not view_text and not scrollable:  # actionable?
                 continue
             
@@ -507,6 +507,8 @@ class DeviceState(object):
                 view_status += 'checked '
             view_desc = f'- a {view_status}view'
             if content_description:
+                content_description = content_description.replace('\n', '  ')
+                content_description = f'{content_description[:20]}...' if len(content_description) > 20 else content_description
                 view_desc += f' "{content_description}"'
             if view_text:
                 view_text = view_text.replace('\n', '  ')
@@ -541,8 +543,8 @@ class DeviceState(object):
         return state_desc, available_actions
     
     def get_view_desc(self, view):
-        content_description = self._get_self_ancestors_property(view, 'content_description', default='')
-        view_text = self._get_self_ancestors_property(view, 'text', default='')
+        content_description = self.__safe_dict_get(view, 'content_description', default='')
+        view_text = self.__safe_dict_get(view, 'text', default='')
         scrollable = self.__safe_dict_get(view, 'scrollable')
         view_desc = f'view'
         if scrollable:
