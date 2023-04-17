@@ -9,7 +9,12 @@ It can control an app automatically based on a natural language task description
 
 It is built upon [DroidBot](https://github.com/honeynet/droidbot) with [ChatGPT](https://chat.openai.com/)-style APIs.
 
-[Li, Yuanchun, et al. "DroidBot: a lightweight UI-guided test input generator for Android." In Proceedings of the 39th International Conference on Software Engineering Companion (ICSE-C '17). Buenos Aires, Argentina, 2017.](http://dl.acm.org/citation.cfm?id=3098352)
+Technical report:
+
+DroidBot-GPT: [Hao Wen, Hongming Wang, Jiaxuan Liu, Yuanchun Li. "DroidBot-GPT: GPT-powered UI Automation for Android"](https://arxiv.org/abs/2304.07061)
+
+
+DroidBot: [Li, Yuanchun, et al. "DroidBot: a lightweight UI-guided test input generator for Android." In Proceedings of the 39th International Conference on Software Engineering Companion (ICSE-C '17). Buenos Aires, Argentina, 2017.](http://dl.acm.org/citation.cfm?id=3098352)
 
 ## How to install
 
