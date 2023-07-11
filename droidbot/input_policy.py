@@ -768,7 +768,7 @@ class TaskPolicy(UtgBasedInputPolicy):
             print(prompt)
             response = self._query_llm(prompt)
             print(f'response: {response}')
-            selected_action.text = response.replace('"', '').replace(' ', '-')
+            selected_action.text = response.replace('"', '')
             if len(selected_action.text) > 30:  # heuristically disable long text input
                 selected_action.text = ''
         return selected_action, candidate_actions
