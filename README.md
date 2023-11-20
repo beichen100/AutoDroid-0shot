@@ -4,17 +4,17 @@
 
 ## About
 
-DroidBot-GPT is a GPT-powered UI automator for Android.
+DroidBot-GPT is a GPT-powered GUI task automator for Android.
 It can control an app automatically based on a natural language task description.
 
 It is built upon [DroidBot](https://github.com/honeynet/droidbot) with [ChatGPT](https://chat.openai.com/)-style APIs.
+
+A more advanced version can be found in [AutoDroid](https://github.com/MobileLLM/AutoDroid).
 
 Technical report:
 
 DroidBot-GPT: [Hao Wen, Hongming Wang, Jiaxuan Liu, Yuanchun Li. "DroidBot-GPT: GPT-powered UI Automation for Android"](https://arxiv.org/abs/2304.07061)
 
-
-DroidBot: [Li, Yuanchun, et al. "DroidBot: a lightweight UI-guided test input generator for Android." In Proceedings of the 39th International Conference on Software Engineering Companion (ICSE-C '17). Buenos Aires, Argentina, 2017.](http://dl.acm.org/citation.cfm?id=3098352)
 
 ## How to install
 
