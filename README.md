@@ -1,19 +1,19 @@
-![DroidBot-GPT demo](droidbot/resources/dummy_documents/DroidBot-GPT-demo.gif)
+![demo](droidbot/resources/dummy_documents/DroidBot-GPT-demo.gif)
 
-# DroidBot-GPT
+# AutoDroid-0shot
 
 ## About
 
-DroidBot-GPT is a GPT-powered GUI task automator for Android.
+AutoDroid-0shot is a GPT-powered GUI task automator for Android.
 It can control an app automatically based on a natural language task description.
-
 It is built upon [DroidBot](https://github.com/honeynet/droidbot) with [ChatGPT](https://chat.openai.com/)-style APIs.
 
-A more advanced version can be found in [AutoDroid](https://github.com/MobileLLM/AutoDroid).
+This repo acts as a naive baseline that does not require any customization for the apps. 
+A more advanced version (with app-specific memory injection and other optimizations) can be found at [AutoDroid](https://github.com/MobileLLM/AutoDroid).
 
-Technical report:
+Technical report of this repo:
 
-DroidBot-GPT: [Hao Wen, Hongming Wang, Jiaxuan Liu, Yuanchun Li. "DroidBot-GPT: GPT-powered UI Automation for Android"](https://arxiv.org/abs/2304.07061)
+[Hao Wen, Hongming Wang, Jiaxuan Liu, Yuanchun Li. "DroidBot-GPT: GPT-powered UI Automation for Android"](https://arxiv.org/abs/2304.07061)
 
 
 ## How to install
@@ -24,6 +24,7 @@ Make sure you have:
 2. `Java`
 3. `Android SDK`
 4. Added `platform_tools` directory in Android SDK to `PATH`
+5. OpenAI API or similar
 
 Then clone this repo and install with `pip`:
 
@@ -41,20 +42,21 @@ If successfully installed, you should be able to execute `droidbot -h`.
 
     + An app to use. Download the `.apk` file to your host machine.
     + A device or an emulator connected to your host machine via `adb`.
+    + Modify GPT API and key at [here](https://github.com/MobileLLM/DroidBot-GPT/blob/09c0d5d380c508f244321e236edb5697c59983e3/droidbot/input_policy.py#L740C6-L740C6)
 
-2. Start DroidBot:
+2. Start AutoDroid-0shot:
 
     ```
     droidbot -a <path_to_apk> -o output_dir -task <your_task>
     ```
-    That's it! The options are mostly the same as [DroidBot](https://github.com/honeynet/droidbot) except for the new `-task` option, where you can specify any task you want DroidBot-GPT to complete. For example,
+    That's it! The options are mostly the same as [DroidBot](https://github.com/honeynet/droidbot) except for the new `-task` option, where you can specify any task you want to complete. For example,
 
-    - Create a contact named Yuanchun with phone number 1234567.
+    - Create a contact named Alice with phone number 1234567.
     - Book a table for 4 people on Saterday.
     - Send a message to OpenAI to open their AI.
     - ...
 
-Note that DroidBot-GPT is currently for research purpose only. It may perform unintended actions. Please use at your own risk.
+Note that AutoDroid-0shot is currently for research purpose only. It may perform unintended actions on your device. Please use at your own risk.
 
 Enjoy!
 
