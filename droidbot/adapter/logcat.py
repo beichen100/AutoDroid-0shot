@@ -63,7 +63,7 @@ class Logcat(Adapter):
                 continue
             line = self.process.stdout.readline()
             if not isinstance(line, str):
-                line = line.decode()
+                line = line.decode(encoding="windows-1252")
             self.recent_lines.append(line)
             self.parse_line(line)
             if f is not None:

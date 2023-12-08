@@ -56,7 +56,7 @@ class InputManager(object):
         self.monkey = None
 
         if script_path is not None:
-            f = open(script_path, 'r')
+            f = open(script_path, 'r',encoding="utf")
             script_dict = json.load(f)
             from .input_script import DroidBotScript
             self.script = DroidBotScript(script_dict)

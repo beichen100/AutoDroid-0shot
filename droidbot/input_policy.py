@@ -736,41 +736,65 @@ class TaskPolicy(UtgBasedInputPolicy):
         self.__action_history.append('- stop the app')
         self.__event_trace += EVENT_FLAG_STOP_APP
         return IntentEvent(intent=stop_app_intent)
-        
+
+
+    # 修改key    
     def _query_llm(self, prompt):
         import requests
-        URL = os.environ['GPT_URL']  # NOTE: replace with your own GPT API
+        API_KEY = "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"
+        URL = 'https://api.openai.com/v1/chat/completions'  # NOTE: replace with your own GPT API
         body = {"model":"gpt-3.5-turbo","messages":[{"role":"user","content":prompt}],"stream":True}
-        headers = {'Content-Type': 'application/json', 'path': 'v1/chat/completions'}
+        headers = {'Content-Type': 'application/json', 'path': 'v1/chat/completions','Authorization': f'Bearer {API_KEY}'}
         r = requests.post(url=URL, json=body, headers=headers)
         return r.content.decode()
 
     def _get_action_with_LLM(self, current_state, action_history):
         task_prompt = f"I'm using a smartphone to {self.task}."
-        history_prompt = f'I have already completed the following steps, which should not be performed again: \n ' + ';\n '.join(action_history)
+        history_prompt = f'\n\nI have already completed the following steps, which should not be performed again: \n\n ' + ';\n '.join(action_history)
         state_prompt, candidate_actions = current_state.get_described_actions()
-        question = 'Which action should I choose next? Just return the action id and nothing else.\nIf no more action is needed, return -1.'
+        question = '\n\nWhich action should I choose next? Just return the action id and nothing else.\nIf no more action is needed, return -1.\n\n'
         prompt = f'{task_prompt}\n{state_prompt}\n{history_prompt}\n{question}'
         print(prompt)
         response = self._query_llm(prompt)
-        print(f'response: {response}')
+        print(f'response: \n\n{response}')
+
+
         if '-1' in response:
             input(f"Seems the task is completed. Press Enter to continue...")
-        match = re.search(r'\d+', response)
-        if not match:
-            return None, candidate_actions
-        idx = int(match.group(0))
-        selected_action = candidate_actions[idx]
+        # match = re.search(r'\d+', response)
+
+        # print(f'match: \n{match}')
+
+        # if not match:
+        #     return None, candidate_actions
+        # idx = int(match.group(0))
+        # selected_action = candidate_actions[idx]
+
+        # print(f'selected_action: \n{selected_action}')
+
+        content_matches = re.findall(r'"content":"(\d+)"', response)
+        # for content_match in content_matches:
+        #     print(f'content_match: {content_match}\n')
+        selected_action = candidate_actions[int(content_matches[0])]
+
+        print(f'selected_action: {selected_action}\n')
+
         if isinstance(selected_action, SetTextEvent):
             view_text = current_state.get_view_desc(selected_action.view)
-            question = f'What text should I enter to the {view_text}? Just return the text and nothing else.'
+            question = f'\n\nWhat text should I enter to the {view_text}? Just return the text and nothing else. Once upon a time.\n\n'
             prompt = f'{task_prompt}\n{state_prompt}\n{question}'
             print(prompt)
             response = self._query_llm(prompt)
-            print(f'response: {response}')
+            print(f'\n\nresponse: \n\n{response}')
+
             selected_action.text = response.replace('"', '')
-            if len(selected_action.text) > 30:  # heuristically disable long text input
-                selected_action.text = ''
+
+            print(f'\n\nselected_action.text: \n\n{selected_action.text}')
+
+
+            if len(selected_action.text) > 10:  # heuristically disable long text input
+                selected_action.text = '13011803570'
+                
         return selected_action, candidate_actions
         # except:
         #     import traceback
