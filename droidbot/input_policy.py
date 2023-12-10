@@ -741,7 +741,7 @@ class TaskPolicy(UtgBasedInputPolicy):
     # 修改key    
     def _query_llm(self, prompt):
         import requests
-        API_KEY = "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"
+        API_KEY = "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"
         URL = 'https://api.openai.com/v1/chat/completions'  # NOTE: replace with your own GPT API
         body = {"model":"gpt-3.5-turbo","messages":[{"role":"user","content":prompt}],"stream":True}
         headers = {'Content-Type': 'application/json', 'path': 'v1/chat/completions','Authorization': f'Bearer {API_KEY}'}
@@ -749,10 +749,13 @@ class TaskPolicy(UtgBasedInputPolicy):
         return r.content.decode()
 
     def _get_action_with_LLM(self, current_state, action_history):
-        task_prompt = f"I'm using a smartphone to {self.task}."
+        task_prompt = f"{self.task}."
         history_prompt = f'\n\nI have already completed the following steps, which should not be performed again: \n\n ' + ';\n '.join(action_history)
         state_prompt, candidate_actions = current_state.get_described_actions()
-        question = '\n\nWhich action should I choose next? Just return the action id and nothing else.\nIf no more action is needed, return -1.\n\n'
+
+        # 改了prompt，因为代码里的action id 是根据gpt回答里的数字字符串正则匹配得到的。如果含有其他干扰数字，就会报错。
+
+        question = '\n\nWhich action should I choose next? Only return the action number for the next step, just a single digit. I do not need any additional explanations or descriptive content. My code relies on regex matching of the numeric response, and any additional numbers in your answer could cause errors. Please ensure you follow these instructions.\nIf no more action is needed, return -1.\n\n'
         prompt = f'{task_prompt}\n{state_prompt}\n{history_prompt}\n{question}'
         print(prompt)
         response = self._query_llm(prompt)
@@ -772,10 +775,11 @@ class TaskPolicy(UtgBasedInputPolicy):
 
         # print(f'selected_action: \n{selected_action}')
 
+        # 正则匹配回答里的数字编号
         content_matches = re.findall(r'"content":"(\d+)"', response)
-        # for content_match in content_matches:
-        #     print(f'content_match: {content_match}\n')
-        selected_action = candidate_actions[int(content_matches[0])]
+        for content_match in content_matches:
+            print(f'content_match: {content_match}\n')
+            selected_action = candidate_actions[int(content_match)]
 
         print(f'selected_action: {selected_action}\n')
 
@@ -794,7 +798,7 @@ class TaskPolicy(UtgBasedInputPolicy):
 
             if len(selected_action.text) > 10:  # heuristically disable long text input
                 selected_action.text = '13011803570'
-                
+
         return selected_action, candidate_actions
         # except:
         #     import traceback
