@@ -1,6 +1,7 @@
 import copy
 import math
 import os
+import re
 
 from .utils import md5
 from .input_event import TouchEvent, LongTouchEvent, ScrollEvent, SetTextEvent, KeyEvent, UIEvent
@@ -487,6 +488,9 @@ class DeviceState(object):
         available_actions = []
         for view_id in enabled_view_ids:
             view = self.views[view_id]
+
+            # 这里的clickable、checkable等都是检查自己及祖先的属性，函数是_get_self_ancestors_property
+
             clickable = self._get_self_ancestors_property(view, 'clickable')
             scrollable = self.__safe_dict_get(view, 'scrollable')
             checkable = self._get_self_ancestors_property(view, 'checkable')
@@ -497,15 +501,34 @@ class DeviceState(object):
             selected = self.__safe_dict_get(view, 'selected')
             content_description = self.__safe_dict_get(view, 'content_description', default='')
             view_text = self.__safe_dict_get(view, 'text', default='')
-            if not content_description and not view_text and not scrollable:  # actionable?
+
+            resource_id = self.__safe_dict_get(view, 'resource_id')
+            view_class = self.__safe_dict_get(view, 'class')
+
+            simple_class = re.search(r'[^.]+$', view_class).group(0)
+            if resource_id:
+                simple_resource_id = re.search(r'/(?=[^/]+$)(.+)$', resource_id).group(1)
+                print('\nfind a '+resource_id + ' and simple_resource_id is '+simple_resource_id)
+
+            if not content_description and not view_text and not scrollable and not clickable:  # actionable?
                 continue
             
             view_status = ''
+
+            # 添加view判断，只向gpt发送 TextView 或者 ImageView 或者 ViewGroup 或者 Button 这样的 view
+            if 'View' not in simple_class and 'Button' not in simple_class:
+                print('\nfind a '+ simple_class+' but not i want')
+                continue
+
             if editable:
                 view_status += 'editable '
             if checked or selected:
                 view_status += 'checked '
-            view_desc = f'- a {view_status}view'
+
+            # 添加向gpt发送view的属性值 
+            # view_desc = f'- a {view_status} {simple_class} whose resource-id is "{simple_resource_id}" '
+            view_desc = f'- a {view_status} {simple_class} whose resource-id is "{resource_id}" '
+            
             if content_description:
                 content_description = content_description.replace('\n', '  ')
                 content_description = f'{content_description[:20]}...' if len(content_description) > 20 else content_description
@@ -519,38 +542,49 @@ class DeviceState(object):
                 if editable:
                     view_actions.append(f'edit ({len(available_actions)})')
                     available_actions.append(SetTextEvent(view=view, text='HelloWorld'))
-                if clickable or checkable:
+                if clickable:
                     view_actions.append(f'click ({len(available_actions)})')
                     available_actions.append(TouchEvent(view=view))
-                # if checkable:
-                #     view_actions.append(f'check/uncheck ({len(available_actions)})')
-                #     available_actions.append(TouchEvent(view=view))
-                # if long_clickable:
-                #     view_actions.append(f'long click ({len(available_actions)})')
-                #     available_actions.append(LongTouchEvent(view=view))
+
+                if checkable:
+                    view_actions.append(f'check/uncheck ({len(available_actions)})')
+                    available_actions.append(TouchEvent(view=view))
+
+                # 这里为了解决kk直播，设置了long click动作是TouchEvent，对其他APP合不合理呢？
+                if long_clickable:
+                    view_actions.append(f'long click ({len(available_actions)})')
+                    available_actions.append(TouchEvent(view=view))
+
                 if scrollable:
                     view_actions.append(f'scroll up ({len(available_actions)})')
                     available_actions.append(ScrollEvent(view=view, direction='UP'))
                     view_actions.append(f'scroll down ({len(available_actions)})')
                     available_actions.append(ScrollEvent(view=view, direction='DOWN'))
+
                 view_actions_str = ', '.join(view_actions)
                 view_desc += f' that can {view_actions_str}'
             view_descs.append(view_desc)
         view_descs.append(f'- a key to go back ({len(available_actions)})')
         available_actions.append(KeyEvent(name='BACK'))
-        state_desc = 'The current state has the following UI views and corresponding actions, with action id in parentheses:\n '
+        state_desc = '\n\nThe current state has the following UI views and corresponding actions, with action id in parentheses:\n '
         state_desc += ';\n '.join(view_descs)
         return state_desc, available_actions
     
+
+    ## 这里修改已经完成并即将发送给gpt的view
     def get_view_desc(self, view):
-        content_description = self.__safe_dict_get(view, 'content_description', default='')
-        view_text = self.__safe_dict_get(view, 'text', default='')
-        scrollable = self.__safe_dict_get(view, 'scrollable')
-        view_desc = f'view'
-        if scrollable:
-            view_desc = f'scrollable view'
-        if content_description:
-            view_desc += f' "{content_description}"'
+        
+        # 添加view的class字段
+        view_class = self.__safe_dict_get(view, 'class')
+        simple_class = re.search(r'[^.]+$', view_class).group(0)
+
+        # 添加view的resource_id字段
+        resource_id = self.__safe_dict_get(view, 'resource_id')
+        if resource_id:
+            simple_resource_id = re.search(r'/(?=[^/]+$)(.+)$', resource_id).group(1)
+
+        view_desc = f'a {simple_class} whose  resource-id is {simple_resource_id}'
+
         if view_text:
             view_text = view_text.replace('\n', '  ')
             view_text = f'{view_text[:20]}...' if len(view_text) > 20 else view_text

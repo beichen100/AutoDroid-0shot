@@ -740,13 +740,32 @@ class TaskPolicy(UtgBasedInputPolicy):
 
     # 修改key    
     def _query_llm(self, prompt):
-        import requests
-        API_KEY = "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"
-        URL = 'https://api.openai.com/v1/chat/completions'  # NOTE: replace with your own GPT API
-        body = {"model":"gpt-3.5-turbo","messages":[{"role":"user","content":prompt}],"stream":True}
-        headers = {'Content-Type': 'application/json', 'path': 'v1/chat/completions','Authorization': f'Bearer {API_KEY}'}
-        r = requests.post(url=URL, json=body, headers=headers)
-        return r.content.decode()
+        # import requests
+        # API_KEY = "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"
+        # URL = 'https://api.openai.com/v1/chat/completions'  # NOTE: replace with your own GPT API
+        # body = {"model":"gpt-3.5-turbo","messages":[{"role":"user","content":prompt}],"stream":True}
+        # headers = {'Content-Type': 'application/json', 'path': 'v1/chat/completions','Authorization': f'Bearer {API_KEY}'}
+        # r = requests.post(url=URL, json=body, headers=headers)
+        # return r.content.decode()
+    
+        import os
+        from openai import OpenAI
+
+        client = OpenAI(base_url = "https://oneapi.xty.app/v1",
+                        api_key = os.getenv("OPENAI_API_KEY"))
+
+        stream = client.chat.completions.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            stream=True,
+        )
+
+        answer = ''
+        for chunk in stream:
+            if chunk.choices[0].delta.content is not None:
+                answer += chunk.choices[0].delta.content
+
+        return answer
 
     def _get_action_with_LLM(self, current_state, action_history):
         task_prompt = f"{self.task}."
@@ -775,8 +794,11 @@ class TaskPolicy(UtgBasedInputPolicy):
 
         # print(f'selected_action: \n{selected_action}')
 
-        # 正则匹配回答里的数字编号
-        content_matches = re.findall(r'"content":"(\d+)"', response)
+        # 正则匹配回答里的数字编号, gpt3-5用
+        # content_matches = re.findall(r'"content":"(\d+)"', response)
+
+        # gpt4用
+        content_matches = re.findall(r'(\d+)', response)
         for content_match in content_matches:
             print(f'content_match: {content_match}\n')
             selected_action = candidate_actions[int(content_match)]

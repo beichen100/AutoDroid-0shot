@@ -383,6 +383,19 @@ class Device(object):
         """
         assert self.telnet is not None
         return self.telnet.run_cmd("sms send %s '%s'" % (phone, content))
+    
+    # 前置登录模块，获取两分钟前的短信内容
+
+    def set_sms(self):
+
+        # 获取当前UNIX时间戳,最后查询以毫秒为单位
+        current_timestamp = int(time.time()*1000)
+
+        # 计算2分钟之前的UNIX时间戳
+        two_minute_ago_timestamp = current_timestamp - 2*60*1000
+
+        self.adb.shell("content query --uri content://sms/inbox --projection body --where \'date > {two_minute_ago_timestamp}\'")
+
 
     def set_gps(self, x, y):
         """
@@ -906,3 +919,5 @@ class Device(object):
         if self.minicap.check_connectivity():
             print("[CONNECTION] %s is reconnected." % self.minicap.__class__.__name__)
         self.pause_sending_event = False
+
+    
