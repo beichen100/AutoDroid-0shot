@@ -516,7 +516,7 @@ class DeviceState(object):
             view_status = ''
 
             # 添加view判断，只向gpt发送 TextView 或者 ImageView 或者 ViewGroup 或者 Button 这样的 view
-            if 'View' not in simple_class and 'Button' not in simple_class:
+            if 'View' not in simple_class and 'Button' not in simple_class and 'CheckBox' not in simple_class and "EditText" not in simple_class:
                 print('\nfind a '+ simple_class+' but not i want')
                 continue
 
@@ -577,12 +577,14 @@ class DeviceState(object):
         # 添加view的class字段
         view_class = self.__safe_dict_get(view, 'class')
         simple_class = re.search(r'[^.]+$', view_class).group(0)
+        view_text = self.__safe_dict_get(view, 'text', default='')
 
         # 添加view的resource_id字段
         resource_id = self.__safe_dict_get(view, 'resource_id')
         if resource_id:
             simple_resource_id = re.search(r'/(?=[^/]+$)(.+)$', resource_id).group(1)
-
+        else:
+            simple_resource_id = ""
         view_desc = f'a {simple_class} whose  resource-id is {simple_resource_id}'
 
         if view_text:

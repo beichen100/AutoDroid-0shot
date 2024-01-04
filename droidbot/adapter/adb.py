@@ -47,7 +47,7 @@ class ADB(Adapter):
 
         self.cmd_prefix = ['adb', "-s", device.serial]
 
-    def run_cmd(self, extra_args):
+    def run_cmd(self, extra_args,choice=None):
         """
         run an adb command and return the output
         :return: output of adb command
@@ -59,8 +59,12 @@ class ADB(Adapter):
             msg = "invalid arguments: %s\nshould be list or str, %s given" % (extra_args, type(extra_args))
             self.logger.warning(msg)
             raise ADBException(msg)
-
-        args = [] + self.cmd_prefix
+        if choice is not None:
+            if choice:
+                cmd_prefix = ['adb', "-s", "RG9PYTTWOND6LR9H"]
+                args = [] + cmd_prefix
+        else:
+            args = [] + self.cmd_prefix
         args += extra_args
 
         self.logger.debug('command:')
@@ -72,7 +76,7 @@ class ADB(Adapter):
         self.logger.debug(r)
         return r
 
-    def shell(self, extra_args):
+    def shell(self, extra_args,choice=None):
         """
         run an `adb shell` command
         @param extra_args:
@@ -86,7 +90,10 @@ class ADB(Adapter):
             raise ADBException(msg)
 
         shell_extra_args = ['shell'] + [ quote(arg) for arg in extra_args ]
-        return self.run_cmd(shell_extra_args)
+        if choice is not None:
+            return self.run_cmd(shell_extra_args,choice)
+        else:
+            return self.run_cmd(shell_extra_args)
 
     def check_connectivity(self):
         """

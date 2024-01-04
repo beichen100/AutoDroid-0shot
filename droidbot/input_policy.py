@@ -1,9 +1,13 @@
+import subprocess
 import sys
 import json
 import re
 import logging
 import random
 from abc import abstractmethod
+from time import sleep
+
+from droidbot.device import Device
 
 from .input_event import *
 from .utg import UTG
@@ -143,7 +147,7 @@ class UtgBasedInputPolicy(InputPolicy):
         self.current_state = self.device.get_current_state()
         if self.current_state is None:
             import time
-            time.sleep(5)
+            time.sleep(2)
             return KeyEvent(name="BACK")
 
         self.__update_utg()
@@ -574,7 +578,7 @@ class UtgReplayPolicy(InputPolicy):
             self.num_replay_tries += 1
             current_state = self.device.get_current_state()
             if current_state is None:
-                time.sleep(5)
+                time.sleep(2)
                 self.num_replay_tries = 0
                 return KeyEvent(name="BACK")
 
@@ -609,7 +613,7 @@ class UtgReplayPolicy(InputPolicy):
                     self.last_event = event
                     return event                    
 
-            time.sleep(5)
+            time.sleep(2)
 
         # raise InputInterruptedException("No more record can be replayed.")
     def __update_utg(self):
@@ -805,8 +809,52 @@ class TaskPolicy(UtgBasedInputPolicy):
 
         print(f'selected_action: {selected_action}\n')
 
+        
+              
         if isinstance(selected_action, SetTextEvent):
             view_text = current_state.get_view_desc(selected_action.view)
+            
+            # 添加输入手机号的逻辑
+            if '手机号' in  view_text:
+                selected_action.text = '13011803570'
+                return selected_action, candidate_actions
+
+            # 添加获取验证码的逻辑
+            if '验证码' in  view_text:
+
+                # phone_message = self.device.set_sms()
+                phone_message = self.mysms()
+                while phone_message == "No result found.":                   
+                    sleep(5)
+                    # phone_message = self.device.set_sms()
+                    phone_message = self.mysms()
+                
+                # 定义正则表达式模式,匹配body之后的短信内容
+                pattern = re.compile(r'body=(.+)')
+                # 使用findall方法进行匹配
+                matches = pattern.findall(phone_message)
+
+                # 输出匹配结果
+                if matches:
+                    phone_message = matches[0]
+                else:
+                    print("\n匹配短信未找到匹配的内容")
+
+                if phone_message is not None:
+                    question = f'\nWhen logging in with my phone number in the app, I entered my phone number 13011803570 and clicked the button to obtain the verification code. Now I have received a text message, which is \'{phone_message}\'. If you understand, just return me the number verification code in the text message, which is only a few digits and does not require any other content or description.'
+                    print(f'\n{question}')
+                    response = self._query_llm(question)
+                    print(f'\nAfter sending GPT the phone_code, the response is: {response}\n')
+
+                    matches = re.findall(r'\d+', response)
+                    if numbers:
+                        numbers = matches[0]
+                    else:
+                        print("\n匹配GPT回答未找到匹配的验证码.")
+
+                    selected_action.text = numbers
+                    return selected_action, candidate_actions
+            
             question = f'\n\nWhat text should I enter to the {view_text}? Just return the text and nothing else. Once upon a time.\n\n'
             prompt = f'{task_prompt}\n{state_prompt}\n{question}'
             print(prompt)
@@ -818,7 +866,7 @@ class TaskPolicy(UtgBasedInputPolicy):
             print(f'\n\nselected_action.text: \n\n{selected_action.text}')
 
 
-            if len(selected_action.text) > 10:  # heuristically disable long text input
+            if len(selected_action.text) > 30:  # heuristically disable long text input
                 selected_action.text = '13011803570'
 
         return selected_action, candidate_actions
@@ -827,3 +875,24 @@ class TaskPolicy(UtgBasedInputPolicy):
         #     traceback.print_exc()
         #     return None, candidate_actions
 
+
+    def mysms(self):
+        # 获取当前UNIX时间戳,最后查询以毫秒为单位
+        current_timestamp = int(time.time()*1000)
+
+        # 计算2分钟之前的UNIX时间戳
+        two_minute_ago_timestamp = current_timestamp - 2*60*1000
+
+        query_cmd = ""
+
+        query_cmd = f'adb -s RG9PYTTWOND6LR9H shell "content query --uri content://sms/inbox --projection body --where \'date > {two_minute_ago_timestamp}\'"'
+
+        try:
+            # 执行整个命令字符串
+            result = subprocess.run(query_cmd, check=True, capture_output=True, text=True, shell=True)
+            print("Command Output:", result.stdout)
+        except subprocess.CalledProcessError as e:
+            print("Command Failed. Return Code:", e.returncode)
+            print("Error Output:", e.stderr)
+
+        return result

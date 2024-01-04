@@ -394,8 +394,11 @@ class Device(object):
         # 计算2分钟之前的UNIX时间戳
         two_minute_ago_timestamp = current_timestamp - 2*60*1000
 
-        self.adb.shell("content query --uri content://sms/inbox --projection body --where \'date > {two_minute_ago_timestamp}\'")
+        query_cmd = ""
 
+        sms_message = self.adb.shell(f"\"content query --uri content://sms/inbox --projection body --where \'date > {two_minute_ago_timestamp}\'\"",True)
+        
+        return sms_message
 
     def set_gps(self, x, y):
         """
