@@ -479,7 +479,7 @@ class DeviceState(object):
         for view_dict in self.views:
             # exclude navigation bar if exists
             if self.__safe_dict_get(view_dict, 'visible') and \
-                self.__safe_dict_get(view_dict, 'resource_id') not in \
+               self.__safe_dict_get(view_dict, 'resource_id') not in \
                ['android:id/navigationBarBackground',
                 'android:id/statusBarBackground']:
                 enabled_view_ids.append(view_dict['temp_id'])
@@ -506,9 +506,11 @@ class DeviceState(object):
             view_class = self.__safe_dict_get(view, 'class')
 
             simple_class = re.search(r'[^.]+$', view_class).group(0)
-            if resource_id:
-                simple_resource_id = re.search(r'/(?=[^/]+$)(.+)$', resource_id).group(1)
-                print('\nfind a '+resource_id + ' and simple_resource_id is '+simple_resource_id)
+            # if resource_id:
+            #     print(resource_id)
+            #     simple_resource_id = re.search(r'/(?=[^/]+$)(.+)$', resource_id).group(1)
+            #     print('\nfind a '+resource_id + ' and simple_resource_id is '+simple_resource_id)
+            simple_resource_id = resource_id
 
             if not content_description and not view_text and not scrollable and not clickable:  # actionable?
                 continue

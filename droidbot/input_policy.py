@@ -816,7 +816,7 @@ class TaskPolicy(UtgBasedInputPolicy):
             
             # 添加输入手机号的逻辑
             if '手机号' in  view_text:
-                selected_action.text = '13011803570'
+                selected_action.text = '130 1180 3570'
                 return selected_action, candidate_actions
 
             # 添加获取验证码的逻辑
@@ -824,7 +824,7 @@ class TaskPolicy(UtgBasedInputPolicy):
 
                 # phone_message = self.device.set_sms()
                 phone_message = self.mysms()
-                while phone_message == "No result found.":                   
+                while "No result" in phone_message:                   
                     sleep(5)
                     # phone_message = self.device.set_sms()
                     phone_message = self.mysms()
@@ -847,7 +847,7 @@ class TaskPolicy(UtgBasedInputPolicy):
                     print(f'\nAfter sending GPT the phone_code, the response is: {response}\n')
 
                     matches = re.findall(r'\d+', response)
-                    if numbers:
+                    if matches:
                         numbers = matches[0]
                     else:
                         print("\n匹配GPT回答未找到匹配的验证码.")
@@ -881,18 +881,20 @@ class TaskPolicy(UtgBasedInputPolicy):
         current_timestamp = int(time.time()*1000)
 
         # 计算2分钟之前的UNIX时间戳
-        two_minute_ago_timestamp = current_timestamp - 2*60*1000
+        two_minute_ago_timestamp = current_timestamp - 3*60*1000
 
         query_cmd = ""
 
         query_cmd = f'adb -s RG9PYTTWOND6LR9H shell "content query --uri content://sms/inbox --projection body --where \'date > {two_minute_ago_timestamp}\'"'
-
+        print(query_cmd)
+        code = ""
         try:
             # 执行整个命令字符串
-            result = subprocess.run(query_cmd, check=True, capture_output=True, text=True, shell=True)
-            print("Command Output:", result.stdout)
+            result = subprocess.Popen(query_cmd, stdout=subprocess.PIPE, shell=True)
+            code = result.communicate()[0].decode(encoding='utf-8')
+            print("Command Output:", code)
         except subprocess.CalledProcessError as e:
             print("Command Failed. Return Code:", e.returncode)
             print("Error Output:", e.stderr)
 
-        return result
+        return code
